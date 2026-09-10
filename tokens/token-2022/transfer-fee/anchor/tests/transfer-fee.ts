@@ -188,18 +188,22 @@ describe('transfer-fee', () => {
         const transferFeeBasisPoints = 0;
         const maximumFee = 0;
 
+        const epochBefore = BigInt((await connection.getEpochInfo()).epoch);
         const transactionSignature = await program.methods
             .updateFee(transferFeeBasisPoints, new anchor.BN(maximumFee))
             .accountsPartial({ mintAccount: mintKeypair.publicKey })
             .rpc({ skipPreflight: true });
         console.log('Your transaction signature', transactionSignature);
 
-        // The new fee is scheduled two epochs out; the old one stays in force until then.
-        const { epoch } = await connection.getEpochInfo();
+        const epochAfter = BigInt((await connection.getEpochInfo()).epoch);
+
+        // The new fee is scheduled two epochs out from the epoch the transaction
+        // executed in; the old one stays in force until then. The epoch is read on
+        // both sides of the transaction so a rollover between them cannot flake.
         const config = await fetchFeeConfig();
         assert.strictEqual(config.newerTransferFee.transferFeeBasisPoints, 0);
         assert.strictEqual(config.newerTransferFee.maximumFee, 0n);
-        assert.strictEqual(config.newerTransferFee.epoch, BigInt(epoch) + 2n);
+        assert.oneOf(config.newerTransferFee.epoch, [epochBefore + 2n, epochAfter + 2n]);
         assert.strictEqual(config.olderTransferFee.transferFeeBasisPoints, 100);
         assert.strictEqual(config.olderTransferFee.maximumFee, 1n);
     });
