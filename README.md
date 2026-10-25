@@ -1,5 +1,13 @@
 # Program Examples
 
+> [!TIP]
+> **This is a learning fork** of
+> [solana-foundation/program-examples](https://github.com/solana-foundation/program-examples).
+> The program code is unchanged and kept in sync with upstream; only READMEs are added or
+> rewritten, to explain each example: what it does, how its accounts are laid out, who can do
+> what, and what its tests check. Explained so far: [Counter](basics/counter) and
+> [Favorites](basics/favorites). Each one is also an interactive lesson in Learn Solana Programs.
+
 ## Onchain program examples for ⚓ Anchor, 🤥 Pinocchio, and 🦀 Native Rust.
 
 [![Anchor](https://github.com/solana-developers/program-examples/actions/workflows/anchor.yml/badge.svg?event=schedule)](https://github.com/solana-developers/program-examples/actions/workflows/anchor.yml) [![Pinocchio](https://github.com/solana-developers/program-examples/actions/workflows/solana-pinocchio.yml/badge.svg?event=schedule)](https://github.com/solana-developers/program-examples/actions/workflows/solana-pinocchio.yml) [![Native](https://github.com/solana-developers/program-examples/actions/workflows/solana-native.yml/badge.svg?event=schedule)](https://github.com/solana-developers/program-examples/actions/workflows/solana-native.yml)

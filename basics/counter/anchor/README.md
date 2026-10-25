@@ -1,5 +1,12 @@
-# Anchor Counter
+# Counter: Anchor
 
-Anchor enforces init constraints that enforces good programming paradigms.
+The Anchor version has its own `initialize_counter` instruction: the `init` constraint creates
+the account, which the native and Pinocchio versions leave to the client. See the
+[Counter README](../README.md) for how the program works and how the three versions differ.
 
-This means this program has an additional initialization instruction for `Counter`s that the Solana native program does not.
+## Build and test
+
+```shell
+pnpm install
+anchor test
+```
