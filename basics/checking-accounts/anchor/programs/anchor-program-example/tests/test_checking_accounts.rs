@@ -1,5 +1,6 @@
 use {
     anchor_lang::{
+        error::ErrorCode,
         solana_program::{instruction::Instruction, system_instruction, system_program},
         InstructionData, ToAccountMetas,
     },
@@ -7,13 +8,13 @@ use {
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
     solana_signer::Signer,
-    solana_transaction::versioned::VersionedTransaction,
+    solana_transaction::{versioned::VersionedTransaction, InstructionError, TransactionError},
 };
 
-fn send(svm: &mut LiteSVM, ix: Instruction, payer: &Keypair, signers: &[&Keypair]) {
+fn send(svm: &mut LiteSVM, ix: Instruction, payer: &Keypair, signers: &[&Keypair]) -> Result<(), TransactionError> {
     let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &svm.latest_blockhash());
     let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), signers).unwrap();
-    svm.send_transaction(tx).unwrap();
+    svm.send_transaction(tx).map(|_| ()).map_err(|failed| failed.err)
 }
 
 #[test]
@@ -33,7 +34,7 @@ fn check_accounts() {
         0,
         &checking_account_program::id(),
     );
-    send(&mut svm, create, &payer, &[&payer, &account_to_change]);
+    send(&mut svm, create, &payer, &[&payer, &account_to_change]).unwrap();
     assert_eq!(svm.get_account(&account_to_change.pubkey()).unwrap().owner, checking_account_program::id());
 
     let check = Instruction::new_with_bytes(
@@ -47,5 +48,32 @@ fn check_accounts() {
         }
         .to_account_metas(None),
     );
-    send(&mut svm, check, &payer, &[&payer]);
+    send(&mut svm, check, &payer, &[&payer]).unwrap();
+}
+
+#[test]
+fn rejects_an_account_the_program_does_not_own() {
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/deploy/checking_account_program.so"));
+    svm.add_program(checking_account_program::id(), bytes).unwrap();
+    let payer = Keypair::new();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    let account_to_create = Keypair::new();
+    // Never created, so the runtime presents it as owned by the System Program:
+    // exactly what `owner = id()` on account_to_change must refuse.
+    let foreign_account = Keypair::new();
+
+    let check = Instruction::new_with_bytes(
+        checking_account_program::id(),
+        &checking_account_program::instruction::CheckAccounts {}.data(),
+        checking_account_program::accounts::CheckingAccounts {
+            payer: payer.pubkey(),
+            account_to_create: account_to_create.pubkey(),
+            account_to_change: foreign_account.pubkey(),
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    let err = send(&mut svm, check, &payer, &[&payer]).unwrap_err();
+    assert_eq!(err, TransactionError::InstructionError(0, InstructionError::Custom(ErrorCode::ConstraintOwner.into())));
 }
